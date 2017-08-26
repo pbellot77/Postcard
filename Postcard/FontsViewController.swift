@@ -17,6 +17,7 @@ class FontsViewController: UITableViewController, UITableViewDragDelegate {
     super.viewDidLoad()
     
     tableView.delegate = self
+    title = "Fonts"
   }
   
   override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {

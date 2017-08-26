@@ -9,7 +9,7 @@
 import UIKit
 import MobileCoreServices
 
-class ViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDragDelegate, UIDropInteractionDelegate {
+class ViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDragDelegate, UIDropInteractionDelegate, UIDragInteractionDelegate {
   
   @IBOutlet weak var postcard: UIImageView!
   @IBOutlet weak var colorSelection: UICollectionView!
@@ -26,7 +26,12 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
   override func viewDidLoad() {
     super.viewDidLoad()
     
+    title = "Edit Postcard"
+    splitViewController?.view.backgroundColor = UIColor.lightGray
     colorSelection.dragDelegate = self
+    
+    let dragInteraction = UIDragInteraction(delegate: self)
+    postcard.addInteraction(dragInteraction)
     
     colors += [.black, .gray, .white, .orange, .red, .magenta, .purple, .blue, .cyan, .green]
     
@@ -125,7 +130,14 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
         }
         self.renderPostcard()
       }
-    
+      
+    } else if session.hasItemsConforming(toTypeIdentifiers: [kUTTypeImage as String]) {
+      session.loadObjects(ofClass: UIImage.self) { items in
+        guard let draggedImage = items.first as? UIImage else { return }
+        self.image = draggedImage
+        self.renderPostcard()
+      }
+      
     } else {
       
       //handle colors
@@ -140,7 +152,6 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
         self.renderPostcard()
       }
     }
-    
   }
   
   @IBAction func changeText(_ sender: UITapGestureRecognizer) {
@@ -186,6 +197,14 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
     
     // 6 - show the alert
     present(ac, animated: true)
+  }
+  
+  func dragInteraction(_ interaction: UIDragInteraction, itemsForBeginning session: UIDragSession) -> [UIDragItem] {
+    guard let image = postcard.image else { return [] }
+    let provider = NSItemProvider(object: image)
+    let item = UIDragItem(itemProvider: provider)
+    
+    return [item]
   }
   
   
