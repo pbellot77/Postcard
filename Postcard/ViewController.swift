@@ -7,8 +7,9 @@
 //
 
 import UIKit
+import MobileCoreServices
 
-class ViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate {
+class ViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDragDelegate, UIDropInteractionDelegate {
   
   @IBOutlet weak var postcard: UIImageView!
   @IBOutlet weak var colorSelection: UICollectionView!
@@ -25,6 +26,8 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
   override func viewDidLoad() {
     super.viewDidLoad()
     
+    colorSelection.dragDelegate = self
+    
     colors += [.black, .gray, .white, .orange, .red, .magenta, .purple, .blue, .cyan, .green]
     
     for i in 0...9 {
@@ -33,6 +36,10 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
         colors.append(color)
       }
     }
+    postcard.isUserInteractionEnabled = true
+    let dropInteraction = UIDropInteraction(delegate: self)
+    postcard.addInteraction(dropInteraction)
+    
     renderPostcard()
   }
   
@@ -90,11 +97,96 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
     
   }
   
+  func collectionView(_ collectionView: UICollectionView, itemsForBeginning session: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
+    let color = colors[indexPath.item]
+    let provider = NSItemProvider(object: color)
+    let item = UIDragItem(itemProvider: provider)
+    
+    return [item]
+  }
   
+  func dropInteraction(_ interaction: UIDropInteraction, sessionDidUpdate session: UIDropSession) -> UIDropProposal {
+    return UIDropProposal(operation: .copy)
+  }
   
+  func dropInteraction(_ interaction: UIDropInteraction, performDrop session: UIDropSession) {
+    let location = session.location(in: postcard)
+    
+    if session.hasItemsConforming(toTypeIdentifiers: [kUTTypePlainText as String]) {
+      
+      //handle strings
+      session.loadObjects(ofClass: NSString.self) { items in
+        guard let string = items.first as? String else { return }
+        
+        if location.y < self.postcard.bounds.midY {
+          self.topFontName = string
+        } else {
+          self.bottomFontName = string
+        }
+        self.renderPostcard()
+      }
+    
+    } else {
+      
+      //handle colors
+      session.loadObjects(ofClass: UIColor.self) { items in
+        guard let color = items.first as? UIColor else { return }
+        
+        if location.y < self.postcard.bounds.midY {
+          self.topColor = color
+        } else {
+          self.bottomColor = color
+        }
+        self.renderPostcard()
+      }
+    }
+    
+  }
   
-  
-  
+  @IBAction func changeText(_ sender: UITapGestureRecognizer) {
+    
+    // 1 - Find where the usser tapped
+    let location = sender.location(in: postcard)
+    
+    // 2 - decide whether they want to edit the top or bottom label
+    let changeTop: Bool
+    
+    if location.y < postcard.bounds.midY {
+      changeTop = true
+    } else {
+      changeTop = false
+    }
+    
+    // 3 - create an alert controller with a text field
+    let ac = UIAlertController(title: "Change Text", message: nil, preferredStyle: .alert)
+    
+    ac.addTextField { textField in
+      textField.placeholder = "Write what you want to say"
+      
+      if changeTop {
+        textField.text = self.topText
+      } else {
+        textField.text = self.bottomText
+      }
+    }
+    
+    // 4 - add a "Change" button
+    ac.addAction(UIAlertAction(title: "Change", style: .default) { _ in
+      guard let text = ac.textFields?[0].text else { return }
+      
+      if changeTop {
+        self.topText = text
+      } else {
+        self.bottomText = text
+      }
+      self.renderPostcard()
+    })
+    // 5 - add a cancel button
+    ac.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+    
+    // 6 - show the alert
+    present(ac, animated: true)
+  }
   
   
   
